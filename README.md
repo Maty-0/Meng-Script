@@ -21,7 +21,7 @@ ssh user@192.168.1.100
 
 1. **Clone and make executable:**
 ```
-git clone <your-repo-url>
+git clone https://github.com/Maty-0/Meng-Script.git
 cd Meng-Script
 chmod +x meng.sh
 ```
@@ -36,13 +36,26 @@ declare -A aliases=(
 ```
 
 3. **Start using it:**
+#### Show available servers ####
 ```
-./meng.sh -action list                            Show available servers
-
-./meng.sh -alias myserver -action ssh             Connect to server
-
+./meng.sh -action list 
+```
+#### Connect to server ####
+```
+./meng.sh -alias myserver -action ssh  
+```
+#### Send file to server ####
+```
 ./meng.sh -alias myserver -action scp -file myapp
-Send file to server
-
-./meng.sh -alias myserver -action deploy          Build and deploy
 ```
+#### Build and deploy #### 
+```
+./meng.sh -alias myserver -action deploy
+```
+
+4. **(Optional) make meng.sh available globally**
+```
+sudo cp meng.sh /usr/local/bin/meng
+sudo chmod +x /usr/local/bin/meng
+```
+Now you can call eg; `meng -list` from anywhere :)
