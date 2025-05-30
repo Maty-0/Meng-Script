@@ -38,19 +38,27 @@ declare -A aliases=(
 3. **Start using it:**
 #### Show available servers ####
 ```
-./meng.sh -action list 
+./meng.sh --action list 
 ```
 #### Connect to server ####
 ```
-./meng.sh -alias myserver -action ssh  
+./meng.sh --alias myserver --action ssh  
 ```
 #### Send file to server ####
 ```
-./meng.sh -alias myserver -action scp -file myapp
+./meng.sh --alias myserver --action scp -file myapp
 ```
 #### Build and deploy #### 
 ```
-./meng.sh -alias myserver -action deploy
+./meng.sh --alias myserver --action deploy
+```
+#### Overwrite alias path ####
+```
+./meng.sh --alias myserver --action scp --file myapp --path /home/myuser/
+```
+#### Append to the alias path ####
+```
+./meng.sh --alias myserver --action scp --file myapp --path folder/subfolder
 ```
 
 4. **(Optional) make meng.sh available globally**

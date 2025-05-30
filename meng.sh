@@ -47,26 +47,27 @@ echo -e "${RED}✗${NC} $1" >&2
 }
 
 usage() {
-printf "%b\n" \
-"${BLUE}MENG${NC} - Server Management Script v${VERSION}" \
-"${YELLOW}USAGE:${NC}" \
-"$0 -alias <alias> -action <action> [-file <filename>] [options]" \
-"${YELLOW}ACTIONS:${NC}" \
-"${GREEN}scp${NC} Copy file to server" \
-"${GREEN}ssh${NC} Connect to server via SSH" \
-"${GREEN}deploy${NC} Build (if needed) and deploy file" \
-"${GREEN}list${NC} Show all available server aliases" \
-"${YELLOW}OPTIONS:${NC}" \
-"-alias <name> Server alias (required for most actions)" \
-"-action <action> Action to perform (required)" \
-"-file <filename> File to copy/deploy (required for scp/deploy)" \
-"-v, --verbose Enable verbose output" \
-"-h, --help Show this help message" \
-"--version Show version information" \
-"${YELLOW}EXAMPLES:${NC}" \
-"$0 -alias ubproxy -action ssh" \
-"$0 -alias ubproxy -action deploy -file mazarin" \
-"$0 -action list" 
+    printf "%b\n" \
+    "${BLUE}MENG${NC} - Server Management Script v${VERSION}" \
+    "${YELLOW}USAGE:${NC}" \
+    "$0 -alias <alias> -action <action> [-file <filename>] [options]" \
+    "${YELLOW}ACTIONS:${NC}" \
+    "${GREEN}scp${NC} Copy file to server" \
+    "${GREEN}ssh${NC} Connect to server via SSH" \
+    "${GREEN}deploy${NC} Build (if needed) and deploy file" \
+    "${GREEN}list${NC} Show all available server aliases" \
+    "${YELLOW}OPTIONS:${NC}" \
+    "-al, --alias <name> Server alias (required for most actions)" \
+    "-ac, --action <action> Action to perform (required)" \
+    "-f, --file <filename> File to copy/deploy (required for scp/deploy)" \
+    "-p, --path <path> Overwrite or append the path thats defined in the alias" \
+    "-v, --verbose Enable verbose output" \
+    "-h, --help Show this help message" \
+    "--version Show version information" \
+    "${YELLOW}EXAMPLES:${NC}" \
+    "$0 -alias ubproxy -action ssh" \
+    "$0 -alias ubproxy -action deploy -file mazarin" \
+    "$0 -action list" 
 }
 
 show_version() {
@@ -106,11 +107,23 @@ validate_file() {
 
 parse_alias() {
     validate_alias
+
     local alias_full="${aliases[$ALIAS]}"
     USER_HOST="${alias_full%%:*}"  # %%:* = "Remove the longest match of :* from the end"
     REMOTE_PATH="${alias_full#*:}" # #*: = "Remove the shortest match of *: from the beginning"
     USER="${USER_HOST%@*}"         # %@* = "Remove the shortest match of @* from the end"
     HOST="${USER_HOST#*@}"         # #*@ = "Remove the shortest match of *@ from the beginning"
+
+    if [[ -n "${CUSTOM_PATH}" ]]; then
+        if [[ "${CUSTOM_PATH:0:1}" == "/" ]]; then
+            REMOTE_PATH="$CUSTOM_PATH"  
+            log_info "Using absolute path: $REMOTE_PATH"
+        else
+            REMOTE_PATH="${REMOTE_PATH}$CUSTOM_PATH"
+            log_info "Appending to alias path: $REMOTE_PATH"
+        fi
+    fi
+
     if [[ "$VERBOSE" == true ]]; then
         log_info "Parsed alias '$ALIAS':"
         echo " User: $USER"
@@ -123,19 +136,24 @@ parse_arguments() {
     ALIAS=""
     ACTION=""
     FILE=""
+    CUSTOM_PATH=""
     VERBOSE=false
     while [[ $# -gt 0 ]]; do
         case $1 in
-            -alias)
+            -al|--alias)
                 ALIAS="$2"
                 shift 2
                 ;;
-            -action)
+            -ac|--action)
                 ACTION="$2"
                 shift 2
                 ;;
-            -file)
+            -f|--file)
                 FILE="$2"
+                shift 2
+                ;;
+            -p|--path)
+                CUSTOM_PATH="$2"
                 shift 2
                 ;;
             -v|--verbose)
