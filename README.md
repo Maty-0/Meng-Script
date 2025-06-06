@@ -34,15 +34,25 @@ declare -A aliases=(
 [production]="admin@prod.company.com:/opt/apps/"
 )
 ```
+You can also define scripts aliases here: 
+```
+declare -A scripts=(
+[backup]="/home/user/scripts/rclone_backup.sh"
+)
+```
 
 3. **Start using it:**
-#### Show available servers ####
+#### Show available servers and scripts ####
 ```
-./meng.sh --action list 
+./meng.sh --list 
 ```
 #### Connect to server ####
 ```
 ./meng.sh --alias myserver --action ssh  
+```
+#### Run script ####
+```
+./meng.sh --script backup --action run  
 ```
 #### Send file to server ####
 ```

@@ -18,6 +18,12 @@ declare -A aliases=(
 )
 ##########
 
+# DEFINE SCRIPT ALIASES HERE
+declare -A scripts=(
+[backup]="/home/user/scripts/rclone_backup.sh"
+)
+##########
+
 # Colors
 readonly RED='\033[0;31m'
 readonly GREEN='\033[0;32m'
@@ -27,7 +33,7 @@ readonly NC='\033[0m' # No Color
 
 #vars
 readonly DEFAULT_FILE="" #If you dont set -file it will default to this file, very handy for testing
-readonly VERSION="0.1.0"
+readonly VERSION="0.1.3"
 
 # ################# #
 # UTILITY FUNCTIONS #
@@ -50,24 +56,28 @@ usage() {
     printf "%b\n" \
     "${BLUE}MENG${NC} - Server Management Script v${VERSION}" \
     "${YELLOW}USAGE:${NC}" \
-    "$0 -alias <alias> -action <action> [-file <filename>] [options]" \
+    "$0 --alias <alias> -action <action> [--file <filename>] [options]" \
+    "$0 --script <alias> -action <action>" \
     "${YELLOW}ACTIONS:${NC}" \
     "${GREEN}scp${NC} Copy file to server" \
     "${GREEN}ssh${NC} Connect to server via SSH" \
     "${GREEN}deploy${NC} Build (if needed) and deploy file" \
-    "${GREEN}list${NC} Show all available server aliases" \
+    "${GREEN}run${NC} Run a script alias" \
     "${YELLOW}OPTIONS:${NC}" \
     "-al, --alias <name> Server alias (required for most actions)" \
-    "-ac, --action <action> Action to perform (required)" \
-    "-f, --file <filename> File to copy/deploy (required for scp/deploy)" \
-    "-p, --path <path> Overwrite or append the path thats defined in the alias" \
-    "-v, --verbose Enable verbose output" \
-    "-h, --help Show this help message" \
+    "-s,  --script <name> Script alias" \
+    "-ac, --action <action> Action to perform (required for most actions)" \
+    "-f,  --file <filename> File to copy/deploy (required for scp/deploy)" \
+    "-p,  --path <path> Overwrite or append the path thats defined in the alias" \
+    "-l,  --list List all scripts and aliases" \
+    "-v,  --verbose Enable verbose output" \
+    "-h,  --help Show this help message" \
     "--version Show version information" \
     "${YELLOW}EXAMPLES:${NC}" \
-    "$0 -alias ubproxy -action ssh" \
-    "$0 -alias ubproxy -action deploy -file mazarin" \
-    "$0 -action list" 
+    "$0 --alias ubproxy --action ssh" \
+    "$0 --alias ubproxy --action deploy --file mazarin" \
+    "$0 --script backup --action run" \
+    "$0 --list" 
 }
 
 show_version() {
@@ -88,7 +98,16 @@ validate_alias() {
     if [[ -z "${aliases[$ALIAS]+_}" ]]; then
         log_error "Unknown alias '$ALIAS'"
         log_info "Available aliases:"
-        action_list_aliases
+        list_aliases
+        exit 1
+    fi
+}
+
+validate_scripts() {
+    if [[ -z "${scripts[$SCRIPT_AL]+_}" ]]; then
+        log_error "Unknown script '$SCRIPT_AL'"
+        log_info "Available aliases:"
+        list_scripts
         exit 1
     fi
 }
@@ -100,10 +119,37 @@ validate_file() {
     fi
 }
 
+list_scripts() {
+    echo -e "${YELLOW}Available server scripts:${NC}"
+    for script in "${!scripts[@]}"; do
+        local alias_info="${scripts[$script]}"
+        echo -e " ${GREEN}$script${NC} -> $alias_info"
+    done
+}
+
+list_aliases() {
+    echo -e "${YELLOW}Available server aliases:${NC}"
+    for alias in "${!aliases[@]}"; do
+        local alias_info="${aliases[$alias]}"
+        local user_host="${alias_info%%:*}"
+        local path="${alias_info#*:}"
+        echo -e " ${GREEN}$alias${NC} -> $user_host:$path"
+    done
+}
 
 # ########## #
 # MAIN LOGIC #
 # ########## #
+
+parse_script() {
+    validate_scripts
+
+    SCRIPT_TORUN="${scripts[$SCRIPT_AL]}"
+
+    if [[ "$VERBOSE" == true ]]; then
+        log_info "Parsed script '$SCRIPT_TORUN':"
+    fi
+}
 
 parse_alias() {
     validate_alias
@@ -133,6 +179,7 @@ parse_alias() {
 }
 
 parse_arguments() {
+    SCRIPT_AL=""
     ALIAS=""
     ACTION=""
     FILE=""
@@ -142,6 +189,10 @@ parse_arguments() {
         case $1 in
             -al|--alias)
                 ALIAS="$2"
+                shift 2
+                ;;
+            -s|--script)
+                SCRIPT_AL="$2"
                 shift 2
                 ;;
             -ac|--action)
@@ -162,6 +213,11 @@ parse_arguments() {
                 ;;
             -h|--help)
                 usage
+                exit 0
+                ;;
+            -l|--list)
+                list_scripts
+                list_aliases
                 exit 0
                 ;;
             --version)
@@ -216,16 +272,12 @@ action_deploy() {
     fi
 }
 
-
-action_list_aliases() {
-    echo -e "${YELLOW}Available server aliases:${NC}"
-    for alias in "${!aliases[@]}"; do
-        local alias_info="${aliases[$alias]}"
-        local user_host="${alias_info%%:*}"
-        local path="${alias_info#*:}"
-        echo -e " ${GREEN}$alias${NC} -> $user_host:$path"
-    done
+action_run() {
+    log_info "Running script alias $SCRIPT_AL"
+    sh "$SCRIPT_TORUN"
+    log_success "Script ran"
 }
+
 
 # ############## #
 # MAIN EXECUTION #
@@ -241,7 +293,7 @@ main(){
         exit 1
     fi
 
-    if [[ "$ACTION" != "list" && -z "$ALIAS" ]]; then
+    if [[ -z "$ALIAS" && -z "$SCRIPT_AL" ]]; then
         log_error "Alias is required for action '$ACTION'"
         usage
         exit 1
@@ -260,8 +312,9 @@ main(){
             parse_alias
             action_deploy
             ;;
-        list)
-            action_list_aliases
+        run)
+            parse_script
+            action_run
             ;;
         *)
             log_error "Unknown action: $ACTION"
